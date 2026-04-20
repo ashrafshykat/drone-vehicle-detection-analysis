@@ -9,7 +9,7 @@ This repository contains a comprehensive pipeline for detecting **Cars, Trucks, 
 ## 📊 Project Statistics
 - **Total Labeled Images:** 313
 - **Classes:** 3 (Car, Truck, Bike)
-- **Data Split:** 85% Training | 15% Validation
+- **Data Split:** 80% Training | 20% Validation
 
 ---
 
@@ -94,9 +94,9 @@ yolo detect train \
   data=/content/data.yaml \
   model=rtdetr-l.pt \
   epochs=150 \
-  imgsz=640 \
+  imgsz=1280 \
   optimizer=AdamW \
-  lr0=0.0001 \
+  lr0=0.00005 \
   name=vehicle_rtdetr
 ```
 
@@ -107,10 +107,10 @@ Data was managed via a standard YOLO directory structure, with labels exported f
 ```text
 /content/custom_data
   /train
-    /images (266 images)
+    /images (313 images)
     /labels (.txt)
   /validation
-    /images (47 images)
+    /images (62 images)
     /labels (.txt)
   classes.txt
 ```
