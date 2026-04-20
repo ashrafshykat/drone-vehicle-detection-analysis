@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+ultralytics
+opencv-python
+numpy
+pandas
+openpyxl
+psycopg2-binary
+python-multipart
+websockets
+python-dotenv
+ffmpeg-python
+watchfiles

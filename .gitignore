@@ -1,0 +1,50 @@
+# --- Node / Frontend ---
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+*.log
+
+# --- AI / Machine Learning (Weights & Logs) ---
+# Don't track large model files or training runs
+*.pt
+*.pth
+*.onnx
+*.weights
+runs/
+/models/best.pt
+/models/last.pt
+
+# --- Data & Storage ---
+# Don't track local datasets or DB data
+backend/data/
+postgres_data/
+*.csv
+*.mp4
+*.jpg
+*.png
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+.docker/

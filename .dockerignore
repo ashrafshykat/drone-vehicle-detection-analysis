@@ -1,0 +1,24 @@
+# Ignore local dependencies
+node_modules/
+backend/venv/
+.venv/
+
+# Ignore build outputs
+dist/
+build/
+out/
+
+# Ignore version control and logs
+.git/
+.gitignore
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore environment secrets
+.env
