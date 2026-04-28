@@ -1,5 +1,3 @@
-Here is the heavily documented, copy-pastable `README.md` content. You can copy everything below this line and save it as a `.md` file.
-
 ***
 
 # Vehicle Detection System: YOLOv8 & RT-DETR Pipeline
