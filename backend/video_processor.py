@@ -200,9 +200,8 @@ class VideoProcessor:
 
     def _process_frame(self, frame: Any, frame_idx: int, fps: float, conn: Any) -> Any:
         """
-        Runs detector + tracker on a single frame and applies crossing logic.
-
-        NOTE: `persist=True` is essential for keeping ByteTrack state frame-to-frame.
+        Runs detector + tracker and applies crossing logic.
+        Returns the annotated frame for the VideoWriter.
         """
         results = self.model.track(
             source=frame,
@@ -211,73 +210,53 @@ class VideoProcessor:
             verbose=False,
         )
 
-        if not results:
+        # Always draw the counting line and overlay so the video looks "smart"
+        self._draw_counting_line(frame)
+        self._draw_overlay_counts(frame, frame_idx)
+
+        if not results or results[0].boxes is None or results[0].boxes.id is None:
             return frame
 
         result = results[0]
         boxes = result.boxes
-        if boxes is None or boxes.id is None:
-            self._draw_counting_line(frame)
-            return frame
-
         track_ids = boxes.id.int().cpu().tolist()
-        classes = boxes.cls.int().cpu().tolist() if boxes.cls is not None else []
-        xyxy_list = boxes.xyxy.cpu().tolist() if boxes.xyxy is not None else []
-        names = result.names if isinstance(result.names, dict) else {}
+        classes = boxes.cls.int().cpu().tolist()
+        xyxy_list = boxes.xyxy.cpu().tolist()
+        names = result.names
 
         for idx, track_id in enumerate(track_ids):
-            if idx >= len(xyxy_list):
-                continue
-
             x1, y1, x2, y2 = xyxy_list[idx]
-            cx = (x1 + x2) / 2.0
-            cy = (y1 + y2) / 2.0
+            cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
 
-            crossed, direction = self._did_cross_counting_line(track_id=track_id, cx=cx, cy=cy, frame_idx=frame_idx)
-            cls_id = classes[idx] if idx < len(classes) else -1
+            # Check crossing
+            crossed, direction = self._did_cross_counting_line(track_id, cx, cy, frame_idx)
+            
+            cls_id = classes[idx]
             cls_name = names.get(cls_id, f"class_{cls_id}")
-            self._draw_detection(
-                frame,
-                track_id=track_id,
-                cls_name=cls_name,
-                x1=x1,
-                y1=y1,
-                x2=x2,
-                y2=y2,
-                counted_now=False,
-            )
-            if not crossed:
-                continue
 
-            crossed_at = datetime.now(timezone.utc)
-            video_seconds = frame_idx / fps if fps > 0 else 0.0
+            if crossed:
+                crossed_at = datetime.now(timezone.utc)
+                video_seconds = frame_idx / fps if fps > 0 else 0.0
+                
+                # Update counts and state
+                self.class_counts[cls_name] = self.class_counts.get(cls_name, 0) + 1
+                self.global_counted_set.add(track_id)
 
-            self.class_counts[cls_name] = self.class_counts.get(cls_name, 0) + 1
-            self.global_counted_set.add(track_id)
-
-            self._log_crossing_to_db(
-                conn=conn,
-                track_id=track_id,
-                vehicle_class=cls_name,
-                crossed_at=crossed_at,
-                direction=direction,
-                frame_index=frame_idx,
-                video_seconds=video_seconds,
-            )
-            self.report_rows.append(
-                {
+                # Persistence
+                self._log_crossing_to_db(conn, track_id, cls_name, crossed_at, direction, frame_idx, video_seconds)
+                self.report_rows.append({
                     "track_id": track_id,
                     "vehicle_class": cls_name,
                     "crossed_at_utc": crossed_at.isoformat(),
                     "direction": direction,
                     "frame_index": frame_idx,
                     "video_seconds": round(video_seconds, 3),
-                }
-            )
-            self._draw_detection(frame, track_id, cls_name, x1, y1, x2, y2, counted_now=True)
+                })
 
-        self._draw_counting_line(frame)
-        self._draw_overlay_counts(frame, frame_idx)
+            # Draw the box - change color if it has EVER been counted
+            is_counted = track_id in self.global_counted_set
+            self._draw_detection(frame, track_id, cls_name, x1, y1, x2, y2, counted_now=is_counted)
+
         return frame
 
     def _draw_counting_line(self, frame: Any) -> None:

@@ -11,3 +11,4 @@ websockets
 python-dotenv
 ffmpeg-python
 watchfiles
+aiofiles==23.2.1

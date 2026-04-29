@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import aiofiles
 import os
 from pathlib import Path
 from typing import Any
@@ -155,15 +156,20 @@ async def upload_video(
         raise HTTPException(status_code=409, detail="A processing job is already running.")
 
     selected_model_path = _resolve_model_path(model_name)
-
     job_id = str(uuid4())
     upload_path = UPLOADS_DIR / f"{job_id}_{file.filename}"
     report_path = REPORTS_DIR / f"{job_id}_traffic_report.xlsx"
     output_video_path = OUTPUTS_DIR / f"{job_id}_annotated.mp4"
 
-    with upload_path.open("wb") as out_f:
-        out_f.write(await file.read())
-
+    try:
+        async with aiofiles.open(upload_path, "wb") as out_f:
+            while chunk := await file.read(1024 * 1024): 
+                await out_f.write(chunk)
+    except Exception as e:
+        # Reset state if upload fails
+        state.is_processing = False
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+    
     state.is_processing = True
     state.job_id = job_id
     state.report_path = report_path
@@ -180,7 +186,6 @@ async def upload_video(
         "model_name": selected_model_path.name,
     }
     await _broadcast_status(dict(state.last_status))
-
     background_tasks.add_task(_process_job, upload_path, report_path, output_video_path, selected_model_path)
     return JSONResponse(
         {
